@@ -1,0 +1,19 @@
+﻿@startuml
+namespace Saito.SoundManager{
+class SoundManager{
++PlayBgm()
++StopBgm()
++PauseBgm()
++UnPauseBgm()
++PlaySe()
++StopSe()
+}
+}
+class SingletonMonoBehaviour{
+}
+class Main{
+}
+
+Saito.SoundManager ---u|> SingletonMonoBehaviour 
+Main --->Saito.SoundManager.SoundManager
+@enduml
