@@ -5,20 +5,19 @@ using Audio;
 public class test:MonoBehaviour
     {
         [SerializeField] private AudioClip _clip;
-        [SerializeField] private float _volume;
-        
+
         private void Start()
         {
             Observable.EveryUpdate()
                 .Where(_ => Input.GetKeyDown(KeyCode.A))
                 .Subscribe(_ =>
                 {
-                    AudioManager.Instance.SetDelay(0.0f)
+                    AudioManager.Instance.Select(AudioManager.AudioType.SE)
                         .SetPitch(1.0f)
-                        .SetVolume(_volume)
+                        .SetVolume(1.0f)
+                        .SetDelay(4.0f)
                         .PlaySE(_clip)
                         .OnCompleted(() => Debug.Log("OnCompleted!"));
-
                 }).AddTo(this);
         }
     }

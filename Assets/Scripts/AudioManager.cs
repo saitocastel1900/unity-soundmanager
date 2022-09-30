@@ -1,62 +1,175 @@
 ﻿using System;
+using System.Collections;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace Audio
 {
+    /// <summary>
+    /// 音をメソッドチェーン方式で呼ぶ
+    /// </summary>
     [RequireComponent(typeof(AudioSource))]
-    public class AudioManager : SingletonMonoBehaviour<AudioManager>, ISound
+    public class AudioManager : SingletonMonoBehaviour<AudioManager>, IPlay,ISet,IResult
     {
-        [SerializeField] private AudioSource source;
+        //audiosource
+        [SerializeField] private AudioSource bgmAudioSource;
+        [SerializeField] private AudioSource seAudioSource;
 
-        private float duration = 0.0f;
-        private float delayTime = 0.0f;
+        //bgm
+        private float _bgmVolume;
+        public float BgmVolume => _bgmVolume;
 
-        public AudioManager PlaySE(AudioClip clip, float duration = 0.0f)
+        //se
+        private float _seVolume;
+        public float SeVolume => _seVolume;
+        
+        private float _delayTime = 0.0f;
+
+      
+
+        private void Awake()
+        { 
+            #region Singleton
+            if (this != Instance)
+            {
+                Debug.LogError("インスタンスが既に存在しています。インスタンスを一つにするためこのインスタンスを破棄します");
+                Destroy(this.gameObject);
+                return;
+            }
+
+            DontDestroyOnLoad(this.gameObject);
+            #endregion
+
+            if (bgmAudioSource == null || seAudioSource == null)
+            {
+                Debug.LogError("[Audio]AudioSourceが設定されていません");
+                return;
+            }
+        }
+        
+        public enum AudioType
         {
-            if (source == null) Debug.LogError("[Audio]AudioSourceがアタッチされていません");
+            SE,
+            BGM,
+        }
 
-            if (clip != null) source.PlayOneShot(clip);
-            else Debug.LogError("[Audio]AudioClipが設定されていません");
-
+        private AudioType _type;
+        
+        public AudioManager Select(AudioType type)
+        {
+            _type = type;
             return this;
         }
 
-        public AudioManager PlayBGM(AudioClip clip, float duration = 0.0f, bool loopFlag = false)
+        public AudioManager PlaySE(AudioClip clip, float duration = 0.0f)
         {
-            if (source == null) Debug.LogError("[Audio]AudioSourceがアタッチされていません");
+            if (seAudioSource == null) Debug.LogError("[Audio]AudioSourceがアタッチされていません");
 
             if (clip != null)
             {
-                source.clip = clip;
-                source.loop = loopFlag;
-                source.Play();
+                seAudioSource.time=duration==0.0f ? clip.length: duration;
+                StartCoroutine(
+                    DelayMethod(_delayTime,
+                        () => { seAudioSource.PlayOneShot(clip); })
+                );
             }
             else Debug.LogError("[Audio]AudioClipが設定されていません");
 
             return this;
         }
 
+        public  AudioManager PlayBGM(AudioClip clip, float duration = 0.0f, bool loopFlag = false)
+        {
+            if (bgmAudioSource == null) Debug.LogError("[Audio]AudioSourceがアタッチされていません");
+
+            if (clip != null)
+            {
+                bgmAudioSource.time=duration==0.0f ? clip.length: duration;
+                bgmAudioSource.clip = clip;
+                bgmAudioSource.loop = loopFlag;
+                StartCoroutine(
+                    DelayMethod(_delayTime,
+                        () => { bgmAudioSource.Play(); })
+                );
+            }
+            else Debug.LogError("[Audio]AudioClipが設定されていません");
+
+            return this;
+        }
+
+        public AudioManager Stop()
+        {
+            if (bgmAudioSource == null) Debug.LogError("[Audio]AudioSourceがアタッチされていません");
+            
+            bgmAudioSource.Stop();
+            bgmAudioSource.clip = null;
+
+            return this;
+        }
+
+        public AudioManager Pause()
+        {
+            if (bgmAudioSource == null) Debug.LogError("[Audio]AudioSourceがアタッチされていません");
+            if (bgmAudioSource.clip == null) Debug.LogError("[Audio]AudioClipが設定されていません");
+            
+            bgmAudioSource.Pause();
+            
+            return this;
+        }
+
+        public AudioManager UnPause()
+        {
+            if (bgmAudioSource == null) Debug.LogError("[Audio]AudioSourceがアタッチされていません");
+            if (bgmAudioSource.clip == null) Debug.LogError("[Audio]AudioClipが設定されていません");
+            
+            bgmAudioSource.UnPause();
+            
+            return this;
+        }
+
         public AudioManager SetVolume(float volume)
         {
-            source.volume = Math.Clamp(volume, 0.0f, 1.0f);
+            if (_type == AudioType.SE)
+            {
+                _seVolume=Math.Clamp(volume, 0.0f, 1.0f);
+                seAudioSource.volume = SeVolume;
+            }
+            else
+            {
+                _bgmVolume=Math.Clamp(volume, 0.0f, 1.0f);
+                bgmAudioSource.volume = BgmVolume;
+            }
+            
             return this;
         }
 
         public AudioManager SetPitch(float pitch)
         {
-            source.pitch = Math.Clamp(pitch, -3.0f, 3.0f);
+            if (_type == AudioType.SE)
+            {
+                seAudioSource.pitch = Math.Clamp(pitch, -3.0f, 3.0f);
+            }
+            else bgmAudioSource.pitch = Math.Clamp(pitch, -3.0f, 3.0f);
+            
             return this;
         }
 
         public AudioManager SetDelay(float delay)
         {
-            this.delayTime = delay;
+            this._delayTime = delay;
             return this;
         }
 
-        public void OnCompleted(Action _event)
+        public async void OnCompleted(Action _event)
         {
+            await Task.Delay(TimeSpan.FromSeconds(_delayTime));
+            _delayTime = 0.0f;
             _event.Invoke();
+        }
+        
+        private static IEnumerator DelayMethod(float waitTime,Action action){
+            yield return new WaitForSeconds (waitTime);
+            action ();
         }
     }
 }
