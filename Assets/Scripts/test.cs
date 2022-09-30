@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
-using Saito.Audio;
 using UniRx;
+using Audio;
 
 public class test:MonoBehaviour
     {
@@ -16,8 +16,9 @@ public class test:MonoBehaviour
                     AudioManager.Instance.SetDelay(0.0f)
                         .SetPitch(1.0f)
                         .SetVolume(_volume)
-                        .PlaySE(_clip, 1)
-                        .OnComplete(() => Debug.Log("Complete!"));
+                        .PlaySE(_clip)
+                        .OnCompleted(() => Debug.Log("OnCompleted!"));
+
                 }).AddTo(this);
         }
     }
